@@ -22,7 +22,6 @@ game (cell:r) cells output
 -- funcao principal
 nextRound cells = game cells cells []
 
-
 cellChar = "o"
 voidChar = "-"
 matrix :: (Int,Int) -> [(Int,Int)] -> [Char]
@@ -41,5 +40,5 @@ start cells = do
     let nrCells = nextRound cells in start (  filter (`notElem` nrCells) cells  ++  filter (`notElem` cells) nrCells  )
 
 main = do
-    args <- getArgs
-    print (nextRound (read (head args) ) )
+    arg1:args <- getArgs
+    print (nextRound (read arg1) )

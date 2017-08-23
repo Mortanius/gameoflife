@@ -11,12 +11,15 @@ import javafx.geometry.Insets;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.control.TextField;
 import javafx.scene.control.ToolBar;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.Background;
 import javafx.scene.layout.BackgroundFill;
 import javafx.scene.layout.CornerRadii;
+import javafx.scene.layout.GridPane;
+import javafx.scene.layout.VBox;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.paint.Color;
 
@@ -31,10 +34,11 @@ public class MatrizJogoController {
 	private double cellW, cellH;
 	private double space;
 	private double height, width;
-	ToolBar tb;
+	private ToolBar toolbar;
 	private Button button;
 	private Label displayX, displayY;
 	private Label round = new Label("0");
+	private TextField skip = new TextField();
 	public MatrizJogoController(int x, int y, double width, double height) {
 		this.x = x;
 		this.y = y;
@@ -47,26 +51,33 @@ public class MatrizJogoController {
 		displayY = new Label("YY");
 		displayX.setLayoutX(10);
 		displayX.setLayoutY(10);
-		displayY.setLayoutX(10);
+		displayY.setLayoutX(20);
 		displayY.setLayoutY(20);
 		
 		sourceCode = System.getProperty("user.dir")+sourceCode;
 		System.out.println("source "+sourceCode);
-		pane.setPrefSize(width, height);
-		pane.setBackground(new Background(new BackgroundFill(Color.GREY, CornerRadii.EMPTY, Insets.EMPTY)));
+		round.setLayoutX(30);
 		button = new Button("Next");
 		button.setLayoutX(0);
-		button.setLayoutY(580);
 		button.setOnAction(new EventHandler<ActionEvent>() {
 			public void handle(ActionEvent event) {
 				nextRound();
 			};
 		});
-		pane.getChildren().addAll(displayX, displayY);
-		pane.getChildren().add(button);
+		toolbar = new ToolBar(button, displayX, displayY, round);
+		toolbar.setPrefSize(width, 10);
+		toolbar.setLayoutX(0);
+		toolbar.setLayoutY(height-toolbar.getHeight());
+		pane.getChildren().addAll(toolbar);
+		pane.setPrefSize(width, height);
+		
+		pane.setBackground(new Background(new BackgroundFill(Color.GREY, CornerRadii.EMPTY, Insets.EMPTY)));
+		//pane.getChildren().add(button);
 		EventHandler<MouseEvent> cellControl = new EventHandler<MouseEvent>() {
 			@Override
 			public void handle(MouseEvent event) {
+				String roundRestart = "0";
+				if (!round.getText().equals(roundRestart)) round.setText(roundRestart);
 				double x = event.getSceneX();
 				double y = event.getSceneY();
 				int[] coordpoint = coordSceneToPoint(x, y);
@@ -188,6 +199,7 @@ public class MatrizJogoController {
 			manageCell(scanner.nextInt(), scanner.nextInt());
 		}
 		scanner.close();
+		round.setText( (Integer.parseInt(round.getText()) + 1) +"" );
 		totalTime = System.currentTimeMillis() - totalTime;
 		System.out.println("Haskell load time: "+ (double)HaskellTime / 1000 + " Total time: "+ (double)totalTime/1000);
 	}

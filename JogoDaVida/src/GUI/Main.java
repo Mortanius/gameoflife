@@ -5,13 +5,15 @@ import javafx.fxml.FXMLLoader;
 import javafx.geometry.Rectangle2D;
 import javafx.scene.Scene;
 import javafx.scene.layout.AnchorPane;
+import javafx.scene.layout.GridPane;
+import javafx.scene.layout.VBox;
 import javafx.stage.Screen;
 import javafx.stage.Stage;
 
 
 
 public class Main extends Application {
-	private int x=10, y=10;
+	private int x=500, y=500;
 	@Override
 	public void start(Stage primaryStage) {
 		try {
@@ -25,7 +27,7 @@ public class Main extends Application {
 			Scene scene = new Scene(root,width,height);
 			primaryStage.setScene(scene);
 			primaryStage.setResizable(true);
-			primaryStage.setMaximized(true);
+			primaryStage.setMaximized(false);
 			primaryStage.setTitle("Jogo da Vida");
 			primaryStage.show();
 		} catch(Exception e) {
