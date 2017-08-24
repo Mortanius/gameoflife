@@ -8,18 +8,16 @@ import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.fxml.FXML;
 import javafx.geometry.Insets;
-import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.control.ToolBar;
+import javafx.scene.input.KeyEvent;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.Background;
 import javafx.scene.layout.BackgroundFill;
 import javafx.scene.layout.CornerRadii;
-import javafx.scene.layout.GridPane;
-import javafx.scene.layout.VBox;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.paint.Color;
 
@@ -27,50 +25,99 @@ public class MatrizJogoController {
 	@FXML Rectangle r;
 	@FXML AnchorPane pane;
 	private String sourceCode = "\\jogodavida.hs";
-	private Scene scene;
 	private int x, y;
+	private int defX = 10, defY = 10;
 	private Rectangle[] hor, vert; //espaco
 	private Rectangle[][] cellsMatrix;
+	private int[] lastSelectedPoint;
 	private double cellW, cellH;
 	private double space;
 	private double height, width;
 	private ToolBar toolbar;
-	private Button button;
-	private Label displayX, displayY;
+	private Button next, reset, limpar;
+//	private Label displayX, displayY;
 	private Label round = new Label("0");
-	private TextField skip = new TextField();
-	public MatrizJogoController(int x, int y, double width, double height) {
-		this.x = x;
-		this.y = y;
-		this.height = height;
+	private TextField skip = new TextField(), sizeX = new TextField(), sizeY = new TextField();
+	public MatrizJogoController(double width, double height) {
+		sourceCode = System.getProperty("user.dir")+sourceCode;
+		this.x = defX;
+		this.y = defY;
+		this.height = height - 37;
 		this.width = width;
 		space = 10 / Math.sqrt(x*y);
 	}
-	@FXML void initialize () {
-		displayX = new Label("XX");
-		displayY = new Label("YY");
-		displayX.setLayoutX(10);
-		displayX.setLayoutY(10);
-		displayY.setLayoutX(20);
-		displayY.setLayoutY(20);
+	private void init_ToolBar() {
+		EventHandler<KeyEvent> numericChar =new EventHandler<KeyEvent>() {
+			@Override
+			public void handle(KeyEvent event) {
+				try {
+					Integer.parseInt(event.getCharacter());
+				}catch(NumberFormatException e) {
+					event.consume();
+				}
+			}
+		}; 
+		skip.setPromptText("Pular");
+		skip.setPrefWidth(50);
+		skip.setOnKeyTyped(numericChar);
 		
-		sourceCode = System.getProperty("user.dir")+sourceCode;
-		System.out.println("source "+sourceCode);
-		round.setLayoutX(30);
-		button = new Button("Next");
-		button.setLayoutX(0);
-		button.setOnAction(new EventHandler<ActionEvent>() {
+		sizeX.setText(x+"");
+		sizeX.setOnAction(new EventHandler<ActionEvent>() {
+			@Override
+			public void handle(ActionEvent event) {
+				System.out.println("changed");
+			};
+		});
+		sizeX.setPrefWidth(50);
+		sizeX.setOnKeyTyped(numericChar);
+		
+		sizeY.setText(y+"");
+		sizeY.setPrefWidth(50);
+		sizeY.setOnKeyTyped(numericChar);
+		
+/*		displayX = new Label("XX");
+		displayY = new Label("YY");
+*/
+		
+		reset = new Button("Reset");
+		reset.setOnAction(new EventHandler<ActionEvent>() {
+			@Override
+			public void handle(ActionEvent event) {
+				try {
+					x = Integer.parseInt(sizeX.getText());
+					y = Integer.parseInt(sizeY.getText());
+					pane.getChildren().remove(0, pane.getChildren().size());
+					initialize();
+				} catch(NumberFormatException e) {
+					
+				}
+			}
+		});
+		
+		next = new Button("Avançar");
+		next.setOnAction(new EventHandler<ActionEvent>() {
 			public void handle(ActionEvent event) {
 				nextRound();
 			};
 		});
-		toolbar = new ToolBar(button, displayX, displayY, round);
-		toolbar.setPrefSize(width, 10);
+		limpar = new Button("Limpar");
+		limpar.setOnAction(new EventHandler<ActionEvent>() {
+			@Override
+			public void handle(ActionEvent event) {
+				clear();
+			}
+		});
+		toolbar = new ToolBar(skip, next, /*displayX, displayY,*/new Label("Geração"), round, new Label("Tamanho"), sizeX, new Label("x"), sizeY, reset, limpar);
+		toolbar.setPrefSize(width+space, 37);
 		toolbar.setLayoutX(0);
-		toolbar.setLayoutY(height-toolbar.getHeight());
-		pane.getChildren().addAll(toolbar);
-		pane.setPrefSize(width, height);
+		toolbar.setLayoutY(height+space);
+	}
+	@FXML private void initialize () {
+		System.out.println("source "+sourceCode);
 		
+		init_ToolBar();
+		pane.getChildren().add(toolbar);
+		pane.setPrefSize(width, height);
 		pane.setBackground(new Background(new BackgroundFill(Color.GREY, CornerRadii.EMPTY, Insets.EMPTY)));
 		//pane.getChildren().add(button);
 		EventHandler<MouseEvent> cellControl = new EventHandler<MouseEvent>() {
@@ -82,9 +129,23 @@ public class MatrizJogoController {
 				double y = event.getSceneY();
 				int[] coordpoint = coordSceneToPoint(x, y);
 				manageCell(coordpoint[0], coordpoint[1]);
+				lastSelectedPoint = coordpoint;
 			}
 		};
 		pane.setOnMousePressed(cellControl);
+		pane.setOnMouseDragged(new EventHandler<MouseEvent>() {
+			@Override
+			public void handle(MouseEvent event) {
+				double x = event.getSceneX();
+				double y = event.getSceneY();
+				int[] coordpoint = coordSceneToPoint(x, y);
+				if (lastSelectedPoint== null || (lastSelectedPoint[0] != coordpoint[0] || lastSelectedPoint[1] != coordpoint[1])) {
+					manageCell(coordpoint[0], coordpoint[1]);
+					lastSelectedPoint = coordpoint;
+				}
+			}
+		});
+/*
 		pane.setOnMouseMoved(new EventHandler<MouseEvent>() {
 			@Override
 			public void handle(MouseEvent event) {
@@ -92,6 +153,7 @@ public class MatrizJogoController {
 				displayY.setText( event.getSceneY()+"" );
 			}
 		});
+*/
 		setCellW();
 		setCellH();
 		initSpacers(cellControl);
@@ -105,11 +167,11 @@ public class MatrizJogoController {
 		cellH = ( height - (y)*space) / y;
 	}
 	private void initSpacers (EventHandler<MouseEvent> cellControl) {
-		hor = new Rectangle[y-1];
-		vert = new Rectangle[x-1];
+		hor = new Rectangle[y];
+		vert = new Rectangle[x];
 		int c;
 		for (c = 0; c < hor.length; c++) {
-			hor[c] = new Rectangle(width, space, Color.WHITE);
+			hor[c] = new Rectangle(width, space, Color.BLACK);
 			Rectangle r = hor[c];
 			r.setX(0);
 			r.setY((c+1)* (space+cellH));
@@ -120,7 +182,7 @@ public class MatrizJogoController {
 			pane.getChildren().add(r);
 		}
 		for (c = 0; c < vert.length; c++) {
-			vert[c] = new Rectangle(space, height, Color.WHITE);
+			vert[c] = new Rectangle(space, height, Color.BLACK);
 			Rectangle r = vert[c];
 			r.setX((c+1)* (space+cellW));
 			r.setY(0);
@@ -164,6 +226,16 @@ public class MatrizJogoController {
 	private boolean isPopulated (int x, int y) {
 		return cellsMatrix[y][x] != null;
 	}
+	private void clear() {
+		int i,j;
+		for (i = 0; i < y; i++) {
+			for(j = 0; j < x; j++) {
+				if (isPopulated(i,j)) {
+					deleteCell(i,j);
+				}
+			}
+		}
+	}
 	private String formatCoord () {
 		int[][] coordList = new int[y*x][2];
 		int last = 0;
@@ -185,11 +257,12 @@ public class MatrizJogoController {
 	private void nextRound () {
 		long totalTime = System.currentTimeMillis();
 		String s = formatCoord();
-		System.out.println("nextRound "+s);
+		int skip = this.skip.getText().equals("") ? 1 : Integer.parseInt(this.skip.getText());
+		System.out.println("skip "+s+ " "+ skip);
 		long HaskellTime = 0;
 		try {
 			HaskellTime = System.currentTimeMillis();
-			s = IntegracaoHaskell.writeArg(sourceCode, s);
+			s = IntegracaoHaskell.writeArg(sourceCode, s, skip+"");
 			HaskellTime = System.currentTimeMillis() - HaskellTime;
 		}catch (Exception e) {e.printStackTrace();}
 		System.out.println(s);
@@ -199,11 +272,8 @@ public class MatrizJogoController {
 			manageCell(scanner.nextInt(), scanner.nextInt());
 		}
 		scanner.close();
-		round.setText( (Integer.parseInt(round.getText()) + 1) +"" );
+		round.setText( (Integer.parseInt(round.getText()) + skip)+ "" );
 		totalTime = System.currentTimeMillis() - totalTime;
-		System.out.println("Haskell load time: "+ (double)HaskellTime / 1000 + " Total time: "+ (double)totalTime/1000);
-	}
-	@FXML void drag () {
-		
+		System.out.println("Haskell time: "+ (double)HaskellTime / 1000 + "s Total time: "+ (double)totalTime/1000+"s");
 	}
 }

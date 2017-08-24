@@ -19,9 +19,19 @@ game (cell:r) cells output
     where neib = nboors cell cells
           newCells = [(x,y) | (x,y) <- (nbhood cell), x >= 0 && y >= 0 && (notElem (x,y) neib) && length (nboors (x,y) cells) == 3 && (notElem (x,y) output)] -- celulas geradas por multiplicacao
 
+-- aUb - aIb, concatena todos os elementos de duas listas exceto aqueles que se repetem
+inoutputUnion inp outp = filter (`notElem` inp) outp  ++  filter (`notElem` outp) inp
+
 -- funcao principal
 nextRound cells = game cells cells []
 
+skip cells 1 = nextRound cells
+skip cells n =
+    if n > 0 then
+        let rec = inoutputUnion cells (skip cells (n-1)) in -- formatacao para "ENTRADA" para utilizar novamente
+        inoutputUnion cells (inoutputUnion rec (nextRound rec)) -- Lembrando que devemos retornar os pontos que devem ser ALTERADOS. Logo, precisamos utilizar a mesma uniao para retirar os elementos na intersecao 
+    else
+        []
 cellChar = "o"
 voidChar = "-"
 matrix :: (Int,Int) -> [(Int,Int)] -> [Char]
@@ -31,14 +41,17 @@ matrix (x,y) cells
     | (x,y) `elem` cells = cellChar ++ matrix (x+1,y) cells
     | otherwise = voidChar ++ matrix(x+1,y) cells
 
-
 imprimir cells = putStr (matrix (0,0) cells)
-test cells = nextRound cells
-start cells = do
+
+start' cells gen = do
     imprimir cells
-    line <- getLine
-    let nrCells = nextRound cells in start (  filter (`notElem` nrCells) cells  ++  filter (`notElem` cells) nrCells  )
+    print (gen)
+    putStr "Avancar: "
+    line<-getLine
+    let nrCells = (skip cells (read line)) in start' (  inoutputUnion cells nrCells  ) (gen + read(line)::Int )
+
+start cells = start' cells 0
 
 main = do
-    arg1:args <- getArgs
-    print (nextRound (read arg1) )
+    (arg1:arg2:args) <- getArgs
+    print (skip (read arg1) (read arg2) )
