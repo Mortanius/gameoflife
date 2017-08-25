@@ -123,8 +123,7 @@ public class MatrizJogoController {
 		EventHandler<MouseEvent> cellControl = new EventHandler<MouseEvent>() {
 			@Override
 			public void handle(MouseEvent event) {
-				String roundRestart = "0";
-				if (!round.getText().equals(roundRestart)) round.setText(roundRestart);
+				round.setText("0");
 				double x = event.getSceneX();
 				double y = event.getSceneY();
 				int[] coordpoint = coordSceneToPoint(x, y);
@@ -235,6 +234,7 @@ public class MatrizJogoController {
 				}
 			}
 		}
+		round.setText("0");
 	}
 	private String formatCoord () {
 		int[][] coordList = new int[y*x][2];

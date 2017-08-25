@@ -4,8 +4,8 @@ lenx = 30
 leny = 30
 -- soma de 2 pontos
 sumpoint (x,y) (u,v) = (x+u,y+v)
---mapeia os espacos vizinhos do ponto
-nbhood (x,y) = map(sumpoint(x,y)) [(a,b) | a <- [-1..1], b <- [-1..1], a /= 0 || b /= 0]
+--mapeia os espacos vizinhos do ponto         retorno de map sao todos os pontos vizinhos de (x,y)          apenas desconsidera pontos inferiores a (0,0)
+nbhood (x,y) = [(u,v) | (u,v) <- map(sumpoint(x,y)) ([(a,b) | a <- [-1..1], b <- [-1..1], a /= 0 || b /= 0]), u >= 0 && v >= 0 ]
 --retorna as celulas vizinhas do ponto
 nboors (x,y) cells = filter (`elem` (nbhood(x,y)) ) cells
 
@@ -17,14 +17,15 @@ game (cell:r) cells output
     |length neib > 3 || length neib < 2 = game r cells (cell:output ++ newCells) -- adiciona as celulas mortas a lista de saida
     |otherwise = game r cells (output ++ newCells) --  sobrevive
     where neib = nboors cell cells
-          newCells = [(x,y) | (x,y) <- (nbhood cell), x >= 0 && y >= 0 && (notElem (x,y) neib) && length (nboors (x,y) cells) == 3 && (notElem (x,y) output)] -- celulas geradas por multiplicacao
+          newCells = [x | x <- (nbhood cell), (notElem x neib) && length (nboors x cells) == 3 && (notElem x output)] -- celulas geradas por multiplicacao
 
 -- aUb - aIb, concatena todos os elementos de duas listas exceto aqueles que se repetem
 inoutputUnion inp outp = filter (`notElem` inp) outp  ++  filter (`notElem` outp) inp
 
--- funcao principal
+-- recebe a entrada e chama a função principal com a devida formatacao
 nextRound cells = game cells cells []
 
+-- pular n geracoes
 skip cells 1 = nextRound cells
 skip cells n =
     if n > 0 then

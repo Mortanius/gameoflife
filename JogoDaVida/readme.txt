@@ -1,0 +1,1 @@
+Obs.: O programa executa o comando "runhaskell" para interpretar o código fonte
