@@ -3,15 +3,20 @@ package GUI;
 
 import java.util.Scanner;
 
-import Integracao.IntegracaoHaskell;
+import integracao.IntegracaoHaskell;
+import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.fxml.FXML;
 import javafx.geometry.Insets;
+import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
+import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
+import javafx.scene.control.TextInputDialog;
 import javafx.scene.control.ToolBar;
+import javafx.scene.control.Alert.AlertType;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.AnchorPane;
@@ -19,12 +24,25 @@ import javafx.scene.layout.Background;
 import javafx.scene.layout.BackgroundFill;
 import javafx.scene.layout.CornerRadii;
 import javafx.scene.shape.Rectangle;
+import preset.Preset;
+import preset.PresetFileRepository;
 import javafx.scene.paint.Color;
 
 public class MatrizJogoController {
-	@FXML Rectangle r;
+	private EventHandler<MouseEvent> cellControl = new EventHandler<MouseEvent>() {
+		@Override
+		public void handle(MouseEvent event) {
+			round.setText("0");
+			double x = event.getSceneX();
+			double y = event.getSceneY();
+			int[] coordpoint = coordSceneToPoint(x, y);
+			setPreset(coordpoint[0], coordpoint[1]);
+			lastSelectedPoint = coordpoint;
+		}
+	};
 	@FXML AnchorPane pane;
 	private String sourceCode = "\\jogodavida.hs";
+	private String presetsFile = "\\presets.dat";
 	private int x, y;
 	private int defX = 10, defY = 10;
 	private Rectangle[] hor, vert; //espaco
@@ -34,10 +52,13 @@ public class MatrizJogoController {
 	private double space;
 	private double height, width;
 	private ToolBar toolbar;
-	private Button next, reset, limpar;
+	private Button next, reset, limpar, newPresetButton, remPresetButton;
+	private final Preset defaultPreset = new Preset("Cel. Unica", "0 0");
+	private PresetFileRepository presets = new PresetFileRepository(presetsFile, defaultPreset);
 //	private Label displayX, displayY;
 	private Label round = new Label("0");
 	private TextField skip = new TextField(), sizeX = new TextField(), sizeY = new TextField();
+	private ComboBox<Preset> presetsBox;
 	public MatrizJogoController(double width, double height) {
 		sourceCode = System.getProperty("user.dir")+sourceCode;
 		this.x = defX;
@@ -86,8 +107,13 @@ public class MatrizJogoController {
 				try {
 					x = Integer.parseInt(sizeX.getText());
 					y = Integer.parseInt(sizeY.getText());
-					pane.getChildren().remove(0, pane.getChildren().size());
-					initialize();
+					pane.getChildren().removeAll(hor);
+					pane.getChildren().removeAll(vert);
+					for (Rectangle[] r : cellsMatrix) {
+						pane.getChildren().removeAll(r);
+					}
+					
+					initMatrix();
 				} catch(NumberFormatException e) {
 					
 				}
@@ -107,10 +133,35 @@ public class MatrizJogoController {
 				clear();
 			}
 		});
-		toolbar = new ToolBar(skip, next, /*displayX, displayY,*/new Label("Geração"), round, new Label("Tamanho"), sizeX, new Label("x"), sizeY, reset, limpar);
+		presetsBox = new ComboBox<Preset>((ObservableList<Preset>) presets.getPresets());
+		presetsBox.setValue(defaultPreset);
+		
+		newPresetButton = new Button("Salvar");
+		newPresetButton.setOnAction(new EventHandler<ActionEvent>() {
+			@Override
+			public void handle(ActionEvent event) {
+				newPreset();
+			}
+		});
+		remPresetButton = new Button("Remover");
+		remPresetButton.setOnAction(new EventHandler<ActionEvent>() {
+			@Override
+			public void handle(ActionEvent event) {
+				removePreset();
+			}
+		});
+		
+		toolbar = new ToolBar(skip, next, /*displayX, displayY,*/new Label("Geração"), round, new Label("Tamanho"), sizeX, new Label("x"), sizeY, reset, limpar, presetsBox, newPresetButton, remPresetButton);
 		toolbar.setPrefSize(width+space, 37);
 		toolbar.setLayoutX(0);
 		toolbar.setLayoutY(height+space);
+	}
+	private void initMatrix() {
+		setCellW();
+		setCellH();
+		initSpacers(cellControl);
+		cellsMatrix = new Rectangle[y][x];
+		round.setText("0");
 	}
 	@FXML private void initialize () {
 		System.out.println("source "+sourceCode);
@@ -119,18 +170,6 @@ public class MatrizJogoController {
 		pane.getChildren().add(toolbar);
 		pane.setPrefSize(width, height);
 		pane.setBackground(new Background(new BackgroundFill(Color.GREY, CornerRadii.EMPTY, Insets.EMPTY)));
-		//pane.getChildren().add(button);
-		EventHandler<MouseEvent> cellControl = new EventHandler<MouseEvent>() {
-			@Override
-			public void handle(MouseEvent event) {
-				round.setText("0");
-				double x = event.getSceneX();
-				double y = event.getSceneY();
-				int[] coordpoint = coordSceneToPoint(x, y);
-				manageCell(coordpoint[0], coordpoint[1]);
-				lastSelectedPoint = coordpoint;
-			}
-		};
 		pane.setOnMousePressed(cellControl);
 		pane.setOnMouseDragged(new EventHandler<MouseEvent>() {
 			@Override
@@ -153,10 +192,7 @@ public class MatrizJogoController {
 			}
 		});
 */
-		setCellW();
-		setCellH();
-		initSpacers(cellControl);
-		cellsMatrix = new Rectangle[y][x];
+		initMatrix();
 	}
 	
 	private void setCellW() {
@@ -217,7 +253,7 @@ public class MatrizJogoController {
 	private void manageCell(int x, int y) {
 		try {
 			if ( !isPopulated(x, y) )
-				newCell(x, y);
+				newCell(x,y);
 			else
 				deleteCell(x, y);
 			}catch (ArrayIndexOutOfBoundsException e) {}
@@ -229,8 +265,8 @@ public class MatrizJogoController {
 		int i,j;
 		for (i = 0; i < y; i++) {
 			for(j = 0; j < x; j++) {
-				if (isPopulated(i,j)) {
-					deleteCell(i,j);
+				if (isPopulated(j, i)) {
+					deleteCell(j, i);
 				}
 			}
 		}
@@ -254,6 +290,9 @@ public class MatrizJogoController {
 		}
 		return formatted + "]";
 	}
+	private String formatFromHaskell (String s) {
+		return s.replace(',', ' ').replaceAll("[\\[\\(\\)\\]]", "");
+	}
 	private void nextRound () {
 		long totalTime = System.currentTimeMillis();
 		String s = formatCoord();
@@ -266,7 +305,7 @@ public class MatrizJogoController {
 			HaskellTime = System.currentTimeMillis() - HaskellTime;
 		}catch (Exception e) {e.printStackTrace();}
 		System.out.println(s);
-		s = s.replaceAll("[\\[\\(\\,\\)\\]]", " ");
+		s = formatFromHaskell(s);
 		Scanner scanner = new Scanner(s);
 		while (scanner.hasNextInt()) {
 			manageCell(scanner.nextInt(), scanner.nextInt());
@@ -275,5 +314,39 @@ public class MatrizJogoController {
 		round.setText( (Integer.parseInt(round.getText()) + skip)+ "" );
 		totalTime = System.currentTimeMillis() - totalTime;
 		System.out.println("Haskell time: "+ (double)HaskellTime / 1000 + "s Total time: "+ (double)totalTime/1000+"s");
+	}
+	private void setPreset(int mouseX, int mouseY) {
+		Preset presets = presetsBox.getValue() != null ? presetsBox.getValue() : defaultPreset;
+		for (int[] p : presets.getPontos()) {
+			int x = mouseX + p[0], y = mouseY + p[1];
+			manageCell(x, y);
+		}
+	}
+	private void newPreset() {
+		String s = formatCoord();
+		s = formatFromHaskell(s);
+		if (s.length() < 3) { // Formato " 'Inteiro', ' ', 'Inteiro' "
+			Alert a = new Alert(AlertType.ERROR);
+			a.setContentText("O Preset não pode ser vazio");
+			a.showAndWait();
+			return;
+		}
+		TextInputDialog t = new TextInputDialog();
+		t.setContentText("Nome do Preset");
+		String nome = t.showAndWait().orElse(null);
+		if (nome == null) return;
+		Preset pres = new Preset(nome, s);
+		int[] pivo = pres.getPontos().get(0);
+		int pivoX = pivo[0], pivoY = pivo[1];
+		for (int[] p : pres.getPontos()) {
+			p[0] -= pivoX;
+			p[1] -= pivoY;
+		}
+		presets.add(pres);
+	}
+	private void removePreset() {
+		Preset remove = presetsBox.getValue();
+		if (remove != defaultPreset)
+			presetsBox.getItems().remove(remove);
 	}
 }
