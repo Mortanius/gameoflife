@@ -5,9 +5,9 @@ leny = 30
 -- soma de 2 pontos
 sumpoint (x,y) (u,v) = (x+u,y+v)
 --mapeia os espacos vizinhos do ponto         retorno de map sao todos os pontos vizinhos de (x,y)          apenas desconsidera pontos inferiores a (0,0)
-nbhood (x,y) = [(u,v) | (u,v) <- map(sumpoint(x,y)) ([(a,b) | a <- [-1..1], b <- [-1..1], a /= 0 || b /= 0]), u >= 0 && v >= 0 ]
+nbhood (x,y) = [(u,v) | (u,v) <- map(sumpoint(x,y)) ([(a,b) | a <- [-1,0,1], b <- [-1,0,1], a /= 0 || b /= 0]), u >= 0 && v >= 0 ]
 --retorna as celulas vizinhas do ponto
-nboors (x,y) cells = filter (`elem` (nbhood(x,y)) ) cells
+nboors (x,y) cells = filter (`elem` cells ) (nbhood (x,y))
 
 -- Entrada: Copia da lista de entrada (para percorrer), lista de entrada
 --Saida: Lista dos pontos que devem ser alterados
