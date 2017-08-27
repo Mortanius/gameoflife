@@ -26,22 +26,16 @@ public class IntegracaoHaskell {
 		reader = new Thread(new Runnable() {
 			@Override
 			public void run() {
-//				BufferedReader reader = new BufferedReader(
-//						new InputStreamReader(interpreterProcess.getInputStream()));
 				Scanner reader = new Scanner(interpreterProcess.getInputStream());
 				while (!reader.next().equals("*Main>"));
 				while (interpreterProcess.isAlive()) {
 						lineReading.release(lastLine != null && lastLine.startsWith("*") ? 1 : 2);
-//						try {
 						try {
 							lineReading.acquire();
 						} catch (InterruptedException e) {
 							e.printStackTrace();
 						}
 						lastLine = reader.next();
-	//					} catch (IOException e) {
-		//					e.printStackTrace();
-			//			}
 				}
 				reader.close();
 			}
