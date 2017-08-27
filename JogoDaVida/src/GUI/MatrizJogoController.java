@@ -1,9 +1,12 @@
 package GUI;
 
 
+import java.io.IOException;
 import java.util.Scanner;
 
 import integracao.IntegracaoHaskell;
+import integracao.ProcessNotInitializedException;
+import integracao.UtilizadorIntegracao;
 import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
@@ -28,7 +31,7 @@ import preset.Preset;
 import preset.PresetFileRepository;
 import javafx.scene.paint.Color;
 
-public class MatrizJogoController {
+public class MatrizJogoController implements UtilizadorIntegracao {
 	private EventHandler<MouseEvent> cellControl = new EventHandler<MouseEvent>() {
 		@Override
 		public void handle(MouseEvent event) {
@@ -40,6 +43,7 @@ public class MatrizJogoController {
 			lastSelectedPoint = coordpoint;
 		}
 	};
+	private long time;
 	@FXML AnchorPane pane;
 	private String sourceCode = "\\jogodavida.hs";
 	private String presetsFile = "\\presets.dat";
@@ -57,8 +61,11 @@ public class MatrizJogoController {
 	private PresetFileRepository presets = new PresetFileRepository(presetsFile, defaultPreset);
 //	private Label displayX, displayY;
 	private Label round = new Label("0");
-	private TextField skip = new TextField(), sizeX = new TextField(), sizeY = new TextField();
+	private int skip;
+	private TextField skipLabel = new TextField(), sizeX = new TextField(), sizeY = new TextField();
 	private ComboBox<Preset> presetsBox;
+	private Label noCellsLabel = new Label("0");
+	private long noCells = 0;
 	public MatrizJogoController(double width, double height) {
 		sourceCode = System.getProperty("user.dir")+sourceCode;
 		this.x = defX;
@@ -78,9 +85,9 @@ public class MatrizJogoController {
 				}
 			}
 		}; 
-		skip.setPromptText("Pular");
-		skip.setPrefWidth(50);
-		skip.setOnKeyTyped(numericChar);
+		skipLabel.setPromptText("Pular");
+		skipLabel.setPrefWidth(50);
+		skipLabel.setOnKeyTyped(numericChar);
 		
 		sizeX.setText(x+"");
 		sizeX.setOnAction(new EventHandler<ActionEvent>() {
@@ -123,7 +130,7 @@ public class MatrizJogoController {
 		next = new Button("Avançar");
 		next.setOnAction(new EventHandler<ActionEvent>() {
 			public void handle(ActionEvent event) {
-				nextRound();
+				writeArg();
 			};
 		});
 		limpar = new Button("Limpar");
@@ -151,7 +158,7 @@ public class MatrizJogoController {
 			}
 		});
 		
-		toolbar = new ToolBar(skip, next, /*displayX, displayY,*/new Label("Geração"), round, new Label("Tamanho"), sizeX, new Label("x"), sizeY, reset, limpar, presetsBox, newPresetButton, remPresetButton);
+		toolbar = new ToolBar(skipLabel, next, /*displayX, displayY,*/new Label("Geração"), round,noCellsLabel, new Label("Tamanho"), sizeX, new Label("x"), sizeY, reset, limpar, presetsBox, newPresetButton, remPresetButton);
 		toolbar.setPrefSize(width+space, 37);
 		toolbar.setLayoutX(0);
 		toolbar.setLayoutY(height+space);
@@ -193,6 +200,14 @@ public class MatrizJogoController {
 		});
 */
 		initMatrix();
+		try {
+			IntegracaoHaskell.start(sourceCode);
+		} catch (ProcessNotInitializedException e) {
+			e.getCause().printStackTrace();
+			Alert a = new Alert(AlertType.ERROR);
+			a.setContentText(e.getMessage());
+			a.showAndWait();
+		}
 	}
 	
 	private void setCellW() {
@@ -241,12 +256,14 @@ public class MatrizJogoController {
 		return coordsc;
 	}
 	private void newCell(int x, int y) {
+		noCells++;
 		double[] coordsc = coordPointToScene(x, y);
 		cellsMatrix[y][x] = new Rectangle(coordsc[0], coordsc[1], cellW, cellH);
 		cellsMatrix[y][x].setFill(Color.YELLOW);
 		pane.getChildren().add(cellsMatrix[y][x]);
 	}
 	private void deleteCell(int x, int y) {
+		noCells--;
 		pane.getChildren().remove(cellsMatrix[y][x]);
 		cellsMatrix[y][x] = null;
 	}
@@ -257,6 +274,7 @@ public class MatrizJogoController {
 			else
 				deleteCell(x, y);
 			}catch (ArrayIndexOutOfBoundsException e) {}
+		noCellsLabel.setText(noCells+"");
 	}
 	private boolean isPopulated (int x, int y) {
 		return cellsMatrix[y][x] != null;
@@ -293,17 +311,29 @@ public class MatrizJogoController {
 	private String formatFromHaskell (String s) {
 		return s.replace(',', ' ').replaceAll("[\\[\\(\\)\\]]", "");
 	}
-	private void nextRound () {
-		long totalTime = System.currentTimeMillis();
+	
+	public void programOutput (String out) {
+		nextRound(out);
+	}
+	
+	private void writeArg () {
+		pane.setDisable(true);
+		time = System.currentTimeMillis();
 		String s = formatCoord();
-		int skip = this.skip.getText().equals("") ? 1 : Integer.parseInt(this.skip.getText());
+		skip = skipLabel.getText().equals("") ? 1 : Integer.parseInt(skipLabel.getText());
 		System.out.println("skip "+s+ " "+ skip);
-		long HaskellTime = 0;
 		try {
-			HaskellTime = System.currentTimeMillis();
-			s = IntegracaoHaskell.writeArg(sourceCode, "skip", s, skip+"");
-			HaskellTime = System.currentTimeMillis() - HaskellTime;
-		}catch (Exception e) {e.printStackTrace();}
+			IntegracaoHaskell.writeArg(this, "skip", s, skip+"");
+		}catch (ProcessNotInitializedException e) {
+			e.getCause().printStackTrace();
+			Alert a = new Alert(AlertType.ERROR);
+			a.setContentText(e.getMessage());
+			a.showAndWait();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+	private void nextRound (String s) {
 		System.out.println(s);
 		s = formatFromHaskell(s);
 		Scanner scanner = new Scanner(s);
@@ -312,9 +342,11 @@ public class MatrizJogoController {
 		}
 		scanner.close();
 		round.setText( (Integer.parseInt(round.getText()) + skip)+ "" );
-		totalTime = System.currentTimeMillis() - totalTime;
-		System.out.println("Haskell time: "+ (double)HaskellTime / 1000 + "s Total time: "+ (double)totalTime/1000+"s");
+		time = System.currentTimeMillis() - time;
+		System.out.println("Total time: "+ (double)time/1000+"s");
+		pane.setDisable(false);
 	}
+	
 	private void setPreset(int mouseX, int mouseY) {
 		Preset presets = presetsBox.getValue() != null ? presetsBox.getValue() : defaultPreset;
 		for (int[] p : presets.getPontos()) {
