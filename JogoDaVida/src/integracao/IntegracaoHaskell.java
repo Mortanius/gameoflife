@@ -31,7 +31,7 @@ public class IntegracaoHaskell {
 				String s;
 				while (interpreterProcess.isAlive()) {
 					s = reader.next();
-					if (s.startsWith("[") && s.endsWith("]")) {
+					if (!s.startsWith("*") && !s.endsWith(">")) {
 						lastLine = s;
 						lineReading.release();
 					}
