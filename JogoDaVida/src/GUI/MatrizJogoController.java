@@ -301,7 +301,7 @@ public class MatrizJogoController {
 		long HaskellTime = 0;
 		try {
 			HaskellTime = System.currentTimeMillis();
-			s = IntegracaoHaskell.writeArg(sourceCode, s, skip+"");
+			s = IntegracaoHaskell.writeArg(sourceCode, "skip", s, skip+"");
 			HaskellTime = System.currentTimeMillis() - HaskellTime;
 		}catch (Exception e) {e.printStackTrace();}
 		System.out.println(s);
